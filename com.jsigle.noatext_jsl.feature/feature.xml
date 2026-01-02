@@ -2,7 +2,7 @@
 <feature
       id="com.jsigle.noatext_jsl.feature"
       label="OOWrapper updated with noa-libre and improved by Joerg Sigle"
-      version="3.9.0.qualifier"
+      version="3.13"
       provider-name="elexis.info">
 
    <description url="http://www.jsigle.com/prog/elexis/indexe.htm#NOAText_jsl">
@@ -11,8 +11,8 @@ mit verbesserter Stabilität.
 Mehr Informationen dazu findet man unter http://www.jsigle.com/prog/elexis#NOAText_jsl
    </description>
 
-   <copyright url="http://elexis.info/de_contributers.html">
-      2012-2017 Jörg Sigle jsigle@jsigle.com
+   <copyright url="https://www.elexis.info/de/contributors.html">
+      2012-2026 Jörg-Michael Sigle jsigle@jsigle.com www.jsigle.com
    </copyright>
 
    <license url="http://www.gnu.org/licenses/gpl-2.0.html">
@@ -21,16 +21,10 @@ Mehr Informationen dazu findet man unter http://www.jsigle.com/prog/elexis#NOATe
 
    <plugin
          id="com.jsigle.noatext_jsl"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
    <plugin
          id="com.lowagie.itext"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
 </feature>

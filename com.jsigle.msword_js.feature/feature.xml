@@ -2,17 +2,16 @@
 <feature
       id="com.jsigle.msword_js.feature"
       label="MS-Word Plugin by Joerg Sigle"
-      version="3.9.0.qualifier"
+      version="3.13"
       provider-name="elexis.info">
 
    <description url="http://www.jsigle.com/prog/elexis/indexe.htm#msword_js">
-      Ein TextPlugin für Elexis und MsWord. Läuft nur unter Windows
-(32 und 64 bit).
+      Ein TextPlugin für Elexis und MsWord. Läuft nur unter Windows (32 und 64 bit).
 Mehr Informationen dazu findet man unter http://www.jsigle.com/prog/elexis/indexe.htm#msword_js
    </description>
 
-   <copyright url="http://elexis.info/de_contributers.html">
-      2015-2017 Jörg Sigle jsigle@jsigle.com
+   <copyright url="https://www.elexis.info/de/contributors.html">
+      2015-2026 Jörg-Michael Sigle jsigle@jsigle.com www.jsigle.com
    </copyright>
 
    <license url="http://www.gnu.org/licenses/gpl-2.0.html">
@@ -22,35 +21,27 @@ Mehr Informationen dazu findet man unter http://www.jsigle.com/prog/elexis/index
    <plugin
          id="com.jsigle.msword_js"
          os="win32"
-         download-size="0"
-         install-size="0"
          version="0.0.0"/>
 
    <plugin
          id="com.lowagie.itext"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         unpack="false"/>
+         version="0.0.0"/>
 
+   <!-- #20260101js: Ich streiche das native32 plugin, weil das wohl 32-Bit Java zum Verpacken durch Maven braeuchte (?!),
+        damit den maven Build Prozess als letzter verbliebener Fehler abbrich,
+        und vermutlich in einer sonst komplet 64-bittigen Zielumgebung nicht so arg nuetzlich waere.
+        Allenfalls kann man die *.dll manuell ins Ziel kopieren, das hat in frueherem Elexis 3.7 auch funktioniert.
    <plugin
          id="com.jsigle.msword_js.native32"
          os="win32"
          arch="x86"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
+         version="0.0.0"/>
+   -->
 
    <plugin
          id="com.jsigle.msword_js.native64"
          os="win32"
          arch="x86_64"
-         download-size="0"
-         install-size="0"
-         version="0.0.0"
-         fragment="true"
-         unpack="false"/>
+         version="0.0.0"/>
 
 </feature>

@@ -4,12 +4,16 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
   <parent>
     <groupId>ch.elexis.gpl</groupId>
     <artifactId>elexis-3-gpl</artifactId>
-    <version>3.9.0-SNAPSHOT</version>
+    <version>3.13.0</version>
   </parent>
   <artifactId>ch.elexis.gpl.p2site</artifactId>
   <packaging>eclipse-repository</packaging>
     <build>
       <plugins>
+        <!-- #20260101js can we get away without this? - Yes, we can.
+             #I don't need timestamps or incremental building with a mini plugin, when this "optimization" breaks the complete result output.
+             #Please note two comments I've modified by separating their double dash...
+             
         <plugin>
           <groupId>org.codehaus.groovy.maven</groupId>
           <artifactId>gmaven-plugin</artifactId>
@@ -30,16 +34,17 @@ xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xs
                     repo_variant = System.getProperty("repo_variant");
                   }
                   res = new SimpleDateFormat("'"+repo_variant.substring(0,1).replaceFirst('s','a').replaceFirst('p','r')+"'yyyyMMdd-HHmm").format(Calendar.getInstance().getTime())
-                  println 'groovyBuildQualifier fuer ' + repo_variant + ' ist ' + res;
-                  <!-- println 'groovyBuildQualifier was ' + project.properties.getProperty('groovyBuildQualifier');
-                  System.setProperty("groovyBuildQualifier",res); -->
+                  println 'groovyBuildQualifier fuer ' + repo_variant + ' ist ' + res;                  
+                  <!- - println 'groovyBuildQualifier was ' + project.properties.getProperty('groovyBuildQualifier');
+                  System.setProperty("groovyBuildQualifier",res); - ->
                   project.properties.setProperty('groovyBuildQualifier', res)
-                  <!-- println 'groovyBuildQualifier neu ' + project.properties.getProperty('groovyBuildQualifier');-->
+                  <!- - println 'groovyBuildQualifier neu ' + project.properties.getProperty('groovyBuildQualifier');- ->
                 </source>
               </configuration>
             </execution>
           </executions>
         </plugin>
+        -->
           <plugin>
            <groupId>com.google.code.maven-replacer-plugin</groupId>
            <artifactId>replacer</artifactId>
