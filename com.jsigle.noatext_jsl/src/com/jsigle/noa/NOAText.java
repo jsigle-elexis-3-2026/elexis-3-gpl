@@ -101,6 +101,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.LinkedList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -162,7 +163,7 @@ import ag.ion.noa4e.internal.ui.preferences.LocalOfficeApplicationPreferencesPag
 import ag.ion.noa4e.ui.widgets.OfficePanel;
 import ch.elexis.core.data.activator.CoreHub;
 import ch.elexis.core.data.events.ElexisEventDispatcher;
-import ch.elexis.core.data.interfaces.text.ReplaceCallback;
+import ch.elexis.core.text.ReplaceCallback;	//20251230js Migration 3.9 -> 3.13 --- war: import ch.elexis.core.data.interfaces.text.ReplaceCallback;
 import ch.elexis.core.ui.text.ITextPlugin;
 import ch.elexis.core.ui.util.SWTHelper;
 import ch.elexis.data.Patient;
@@ -187,6 +188,34 @@ public class NOAText implements ITextPlugin {
 	private float hi = 0;
 	private int stil = -1;
 	
+	//TODO: 20251230js: Migration 3.9 to 3.13:
+	//Multiple markers at this line
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.getCurrentDocument()
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.findMatching(String)
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.findCount(String)
+	public Object getCurrentDocument()
+		{
+		System.out.println("NOAText_jsl getCurrentDocument() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("NOAText_jsl WARNING / TODO: It is unclear if this implementation is correct.");
+		System.out.println("NOAText_jsl WARNING / TODO: We will simply return the current document.");
+		System.out.println("NOAText_jsl WARNING / TODO: Maybe better implementations exist in other parts of the plugin or they must be added.");
+		//debug_print_status();	This is only available in msword_js, but not in NOAText_jsl
+		//return jacobDocument;	This is only available in msword_js, but not in NOAText_jsl
+		return doc;				//TODO This is (probably) the NOAText_jsl equivalent of msword_js jacobDocument 
+		};
+	public List findMatching(String a)
+		{
+		System.out.println("NOAText_jsl findMatching() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("NOAText_jsl WARNING / TODO: This simply returns an empty List.of().");
+		return List.of();
+		}
+	public int findCount(String a)
+		{
+		System.out.println("NOAText_jsl findCount() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("NOAText_jsl WARNING / TODO: This simply returns 0.");
+		return 0;
+		}
+
 	public NOAText(){
 		System.out.println("NOAText: NOAText: noa loaded");
 		System.out.println("NOAText: NOAText: computing defaultbase...");

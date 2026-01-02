@@ -178,6 +178,7 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.util.LinkedList;
+import java.util.List;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
@@ -210,7 +211,7 @@ import ag.ion.bion.officelayer.event.IEvent;
 import ag.ion.bion.officelayer.text.ITextDocument;
 import ag.ion.bion.workbench.office.editor.core.EditorCorePlugin;
 import ag.ion.noa4e.ui.widgets.OfficePanel;
-import ch.elexis.core.data.interfaces.text.ReplaceCallback;
+import ch.elexis.core.text.ReplaceCallback;	//20251230js Migration 3.9 -> 3.13 --- war: import ch.elexis.core.data.interfaces.text.ReplaceCallback;
 import ch.elexis.core.ui.text.ITextPlugin;
 import ch.elexis.core.ui.util.SWTHelper;
 import ch.rgw.io.FileTool;
@@ -228,8 +229,35 @@ import ch.rgw.tools.StringTool;
  *         properties from it. This code just gives an intro to JACOB and there
  *         are sections that could be enhanced
  */
-public class MSWord_jsText implements ITextPlugin {
+public class MSWord_jsText implements ITextPlugin  {
 	//Please note: Upon close() and quit(), I do also set jacobObjWord = null; jacobDocument = null; etc. - So you need to re-allocate these if needed again.
+	
+	//TODO: 20251230js: Migration 3.9 to 3.13:
+	//Multiple markers at this line
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.getCurrentDocument()
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.findMatching(String)
+	//- The type MSWord_jsText must implement the inherited abstract method ITextPlugin.findCount(String)
+	public Object getCurrentDocument()
+		{
+		System.out.println("MSWord_jsText getCurrentDocument() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("MSWord_jsText WARNING / TODO: It is unclear if this implementation is correct.");
+		System.out.println("MSWord_jsText WARNING / TODO: We will simply return the current document.");
+		System.out.println("MSWord_jsText WARNING / TODO: Maybe better implementations exist in other parts of the plugin or they must be added.");
+		debug_print_status();
+		return jacobDocument;
+		};
+	public List findMatching(String a)
+		{
+		System.out.println("MSWord_jsText findMatching() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("MSWord_jsText WARNING / TODO: This simply returns an empty List.of().");
+		return List.of();
+		}
+	public int findCount(String a)
+		{
+		System.out.println("MSWord_jsText findCount() implemented ad hoc to match Elexis 3.13.");
+		System.out.println("MSWord_jsText WARNING / TODO: This simply returns 0.");
+		return 0;
+		}
 
 	//ToDo: This is a workaround. Solve it properly sometimes!
 	//As we can't make Word completely remove and hide a completely empty header programmatically yet

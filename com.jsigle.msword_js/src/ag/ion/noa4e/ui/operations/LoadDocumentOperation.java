@@ -784,8 +784,14 @@ public class LoadDocumentOperation implements IRunnableWithProgress {
 				System.out.println("WARNING: appear with LibreOffice in its desired frame, and even the problematic floating dialog windows");
 				System.out.println("WARNING: in addition to that - for either the table properties, or the externally opened F11 Formatvorlagen.");
 				System.out.println("WARNING: 201202252133js");
-				internalThread.destroy();	//this makes progressMonitor detect the end of the thread at least,
+//TODO: 20251230js: The method .destroy() is now "undefined"; and stopping threads is not even reliably possible,
+//according to: https://stackoverflow.com/questions/16504140/thread-stop-deprecated
+//It is not very important anyway, as this refers to the OpenOffice Interface - which is a leftover from noatext/noatext_js
+//which served as a starting point for the development of msword_js. So Ultimately, this may be removed when msword_js is cleaned.
+//Similar delays as in failed noatext/noatext_js/OpenOffice activation responses have not been observed in the jacob based msword_js interface.
+//				internalThread.destroy();	//this makes progressMonitor detect the end of the thread at least,
 											//but it is deprecated and very error prone. So this should NOT be used except for debugging.
+				internalThread.interrupt();	//TODO: 20251230js this would be an attempt to stop that thread.
 				//internalThread.stop();	//this does not stop progressMonitor from cycling on and on.
 				Thread.sleep(500);			//Nach dem destroy des anderen Threads lasse ich hier noch eine halbe Sekunde Zeit.
 			}
