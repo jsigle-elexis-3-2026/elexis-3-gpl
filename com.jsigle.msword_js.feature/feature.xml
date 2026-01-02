@@ -2,7 +2,7 @@
 <feature
       id="com.jsigle.msword_js.feature"
       label="MS-Word Plugin by Joerg Sigle"
-      version="3.13"
+      version="3.13.0"
       provider-name="elexis.info">
 
    <description url="http://www.jsigle.com/prog/elexis/indexe.htm#msword_js">
