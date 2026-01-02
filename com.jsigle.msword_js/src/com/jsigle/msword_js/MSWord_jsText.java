@@ -173,12 +173,17 @@ package com.jsigle.msword_js;
 
 import java.awt.Frame;
 import java.io.BufferedInputStream;
+import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.SecureRandom;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.FileLocator;
@@ -189,35 +194,75 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.osgi.framework.Bundle;
 
+import ag.ion.bion.officelayer.application.IOfficeApplication;
+import ag.ion.bion.officelayer.application.OfficeApplicationException;
+import ag.ion.bion.officelayer.document.DocumentDescriptor;
+import ag.ion.bion.officelayer.document.DocumentException;
+import ag.ion.bion.officelayer.event.ICloseEvent;
+import ag.ion.bion.officelayer.event.ICloseListener;
+import ag.ion.bion.officelayer.event.IEvent;
+import ag.ion.bion.officelayer.form.IFormComponent;
+import ag.ion.bion.officelayer.form.IFormService;
+import ag.ion.bion.officelayer.text.ITextDocument;
+import ag.ion.bion.officelayer.text.ITextRange;
+import ag.ion.bion.officelayer.text.ITextTable;
+import ag.ion.bion.officelayer.text.table.ITextTablePropertyStore;
+import ag.ion.bion.workbench.office.editor.core.EditorCorePlugin;
+import ag.ion.noa.NOAException;
+import ag.ion.noa.search.ISearchResult;
+import ag.ion.noa.search.SearchDescriptor;
+import ag.ion.noa4e.ui.widgets.OfficePanel;
+
 import com.jacob.activeX.ActiveXComponent;
 import com.jacob.com.ComException;
 import com.jacob.com.Dispatch;
 import com.jacob.com.DispatchEvents;
 import com.jacob.com.Variant;
+
+import com.sun.star.awt.FontWeight;
+import com.sun.star.awt.Size;
+import com.sun.star.awt.XTextComponent;
+import com.sun.star.beans.PropertyValue;
 import com.sun.star.beans.PropertyVetoException;
 import com.sun.star.beans.UnknownPropertyException;
 import com.sun.star.beans.XPropertySet;
 import com.sun.star.beans.XPropertySetInfo;
+import com.sun.star.drawing.XShape;
+import com.sun.star.form.FormComponentType;
 import com.sun.star.lang.IllegalArgumentException;
 import com.sun.star.lang.WrappedTargetException;
+import com.sun.star.style.ParagraphAdjust;
+import com.sun.star.text.HoriOrientation;
+import com.sun.star.text.RelOrientation;
+import com.sun.star.text.TextContentAnchorType;
+import com.sun.star.text.VertOrientation;
+import com.sun.star.text.XText;
 import com.sun.star.text.XTextCursor;
+import com.sun.star.text.XTextDocument;
+import com.sun.star.text.XTextFrame;
 import com.sun.star.uno.UnoRuntime;
+import com.sun.star.view.PrintableState;
+import com.sun.star.view.XPrintable;
 
-import ag.ion.bion.officelayer.application.IOfficeApplication;
-import ag.ion.bion.officelayer.document.DocumentException;
-import ag.ion.bion.officelayer.event.ICloseEvent;
-import ag.ion.bion.officelayer.event.ICloseListener;
-import ag.ion.bion.officelayer.event.IEvent;
-import ag.ion.bion.officelayer.text.ITextDocument;
-import ag.ion.bion.workbench.office.editor.core.EditorCorePlugin;
-import ag.ion.noa4e.ui.widgets.OfficePanel;
-import ch.elexis.core.text.ReplaceCallback;	//20251230js Migration 3.9 -> 3.13 --- war: import ch.elexis.core.data.interfaces.text.ReplaceCallback;
+import com.jsigle.msword_js.MSWord_jsPrinter;
+import com.jsigle.msword_js.MSWord_jsPrinter.MyXPrintJobListener;
+import com.jsigle.msword_js.MSWord_jsText;
+import com.jsigle.msword_js.MSWord_jsText.closeListener;
+
 import ch.elexis.core.ui.text.ITextPlugin;
 import ch.elexis.core.ui.util.SWTHelper;
+
+import com.jsigle.msword_js.Messages;
+import com.jsigle.msword_js.Preferences;
+import com.jsigle.msword_js.Utils;
+
 import ch.rgw.io.FileTool;
 import ch.rgw.tools.ExHandler;
 import ch.rgw.tools.Log;
 import ch.rgw.tools.StringTool;
+import ch.rgw.tools.TimeTool;
+import ch.elexis.core.text.ReplaceCallback;	//20251230js Migration 3.9 -> 3.13 --- war: import ch.elexis.core.data.interfaces.text.ReplaceCallback;
+
 /**
  * Submitted to the Jacob SourceForge web site as a sample 3/2005
  * <p>
@@ -229,7 +274,7 @@ import ch.rgw.tools.StringTool;
  *         properties from it. This code just gives an intro to JACOB and there
  *         are sections that could be enhanced
  */
-public class MSWord_jsText implements ITextPlugin  {
+public class MSWord_jsText implements ITextPlugin {
 	//Please note: Upon close() and quit(), I do also set jacobObjWord = null; jacobDocument = null; etc. - So you need to re-allocate these if needed again.
 	
 	//TODO: 20251230js: Migration 3.9 to 3.13:
@@ -2440,11 +2485,14 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		System.out.println("");
 		
 		
+		//20210329js removing agIon references
 		if (agIonPanel == null)	System.out.println("MSWord_jsText: createMe: WARNING: panel==null");
 		else 					System.out.println("MSWord_jsText: createMe: panel="+agIonPanel.toString());
 
+		//20210329js removing agIon references
 		agIonDoc = (ITextDocument) agIonPanel.getDocument();
 		
+		//20210329js removing agIon references
 		if (agIonDoc == null)	System.out.println("MSWord_jsText: createMe: WARNING: doc==null, so we won't be able to doc.addCloseListener() or noas.add(this).");
 		else 					System.out.println("MSWord_jsText: createMe: doc="+agIonDoc.toString());
 
@@ -2454,6 +2502,7 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		System.out.println("MSWord_jsText: createMe: ToDo: Provide a replacement for closeListener and noas-keeping-track-of-opened-documents for msword_js...");
 		System.out.println("MSWord_jsText: createMe: TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO");
 		
+		//20210329js removing agIon references
 		if (agIonDoc != null) {
 			System.out.println("MSWord_jsText: createMe: doc.addCloseListener()...");
 		
@@ -2467,6 +2516,7 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 			else					System.out.println("MSWord_jsText: createMe: WARNING: noas IS NULL, even though we should have added something.");
 		}
 
+		
 		
 		System.out.println("MSWord_jsText: createMe ends");
 	}
@@ -2618,17 +2668,28 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		System.out.println("MSWord_jsText: createContainer: About to TODO: THE FOLLOWING PROBABLY STILL USES OpenOffice, SHOULD USE MS Word instead!!!");
 
 		System.out.println("MSWord_jsText: createContainer: About to panel = new OfficePanel()...");
+
+		//20210329js removing agIon references
+		//If this is removed, this function will currently return null and therefore,
+		//TextView.java createPartControl() which calls this method as textContainer = txt.getPlugin().createContainer(parent, new SaveHandler());
+		//will show an error dialog: "Das Textplugin konnte nicht korrekt geladen werden."
+		//NEVERTHELESS, the external msword window will appear and show an opened letter.
+		//I don't know (yet), whether Elexis needs to talk to the "panel" = result of createContainer in any way later on.
 		agIonPanel = new OfficePanel(parent, SWT.NONE);
 
+		//20210329js removing agIon references
 		if (agIonPanel == null)	System.out.println("MSWord_jsText: createContainer: WARNING: panel IS NULL!");
 		else 				System.out.println("MSWord_jsText: createContainer: panel="+agIonPanel.toString());
 		
+		//20210329js removing agIon references
 		agIonPanel.setBuildAlwaysNewFrames(false);
 		
 		System.out.println("MSWord_jsText: createContainer: About to office = EditorCorePlugin.getdefault().getmanagedLocalOfficeApplication()...");
 
+		//20210329js removing agIon references
 		agIonOffice = EditorCorePlugin.getDefault().getManagedLocalOfficeApplication();
 
+		//20210329js removing agIon references
 		if (agIonOffice == null)	System.out.println("MSWord_jsText: createContainer: WARNING: office IS NULL!");
 		else 				System.out.println("MSWord_jsText: createContainer: office="+agIonOffice.toString());
 		
@@ -3044,9 +3105,23 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 	 */
 	public byte[] storeToByteArray(){
 		System.out.println("MSWord_jsText: storeToByteArray begins");
-		File tmpFile4save = null;
-		byte[] ret = null;
+
+//TODO: 202601021052js - HERE IS AN ALTERNATE ENDING FROM WHAT NG PUT INTO THE 3.x and 3.9 GITHUB VERSIONS.
+//TODO: 202601021052js - VERY PROBABLY, THIS VERSION DOES NOT USE MEANINGFUL FILENAMES! (SEE BELOW!)		
+//		File tmpFile4save = null;
+//		byte[] ret = null;
+		
 		//if (agIonDoc == null) {
+
+		//202601021316js added this
+		if (jacobObjWord == null) {
+			System.out.println("MSWord_jsText: storeToByteArray: WARNING: jacobObjWord IS NULL!");
+			System.out.println("MSWord_jsText: storeToByteArray: about to return null...");
+			return null;
+		} else {
+			System.out.println("MSWord_jsText: storeToByteArray: INFO: jacobObjWord="+jacobObjWord.toString());
+		}
+							
 		if (jacobDocument == null) {
 			System.out.println("MSWord_jsText: storeToByteArray: WARNING: jacobDocument IS NULL!");
 			System.out.println("MSWord_jsText: storeToByteArray: about to return null...");
@@ -3065,8 +3140,12 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 			*/
 			
 			String myFilename=myFile.getAbsolutePath();
-			tmpFile4save = File.createTempFile("msword_js", ".doc");
-			myFilename = tmpFile4save.getAbsolutePath();
+
+//TODO: 202601021052js - HERE IS AN ALTERNATE ENDING FROM WHAT NG PUT INTO THE 3.x and 3.9 GITHUB VERSIONS.
+//TODO: 202601021052js - VERY PROBABLY, THIS VERSION DOES NOT USE MEANINGFUL FILENAMES!	(SEE BELOW!)	
+//			tmpFile4save = File.createTempFile("msword_js", ".doc");
+//			myFilename = tmpFile4save.getAbsolutePath();
+			
 			System.out.println("MSWord_jsText: storeToByteArray(): Trying to save the jacobDocument: "+myFilename+" from jacobDocument...");
 			
 			/*
@@ -3079,6 +3158,14 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 			Dispatch.call(jacobDocument, "Save", myFilename);
 			*/
 			
+
+//TODO: 202601021052js - HERE IS AN ALTERNATE ENDING FROM WHAT NG PUT INTO THE 3.x and 3.9 GITHUB VERSIONS.
+//TODO:	202601021052js - I CANNOT REVIEW THIS RIGHT NOW TO DECIDE WHETHER IT'S OLDER OR NEWER COMPARED TO MY OWN VERSION
+//TODO:	202601021052js - FROM WHICH I'M CURRENTLY RESTORING THINGS MISSING OUT THERE.
+//TODO:	202601021052js - SO I'M JUST KEEPING THIS AS A COMPLETE ALTERNATIVE FOR FUTURE REVIEW,
+//TODO:	202601021052js - BUT USE MY PROBABLY MORE RECENT REFERENCE VERSION INSTEAD.
+//TODO: 202601021052js - VERY PROBABLY, THIS VERSION DOES NOT USE MEANINGFUL FILENAMES! (SEE ABOVE!)			
+/*			
 			//THIS WORKS
 			System.out.println("MSWord_jsText: storeToByteArray(): About to Dispatch.call( (Dispatch) Dispatch.call(jacobObjWord, \"WordBasic\").getDispatch(),\"FileSaveAs\", myFilename);");
 			System.out.println("MSWord_jsText: storeToByteArray: Before saving myFile.length == " + myFile.length());
@@ -3112,6 +3199,45 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 			tmpFile4save.delete();
 		}
 		return ret;
+	}
+*/	
+			System.out.println("MSWord_jsText: storeToByteArray(): TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO");
+			System.out.println("MSWord_jsText: storeToByteArray(): Check which version of the method end is the better implementation after 202601021057js");
+			System.out.println("MSWord_jsText: storeToByteArray(): TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO");
+			
+			//202601021316js added this
+			if (jacobObjWord == null) {
+				System.out.println("MSWord_jsText: storeToByteArray: WARNING: jacobObjWord IS NULL!");
+				System.out.println("MSWord_jsText: storeToByteArray: about to return null...");
+				return null;
+			} else {
+				System.out.println("MSWord_jsText: storeToByteArray: INFO: jacobObjWord="+jacobObjWord.toString());
+			}
+			
+			//THIS WORKS
+			System.out.println("MSWord_jsText: storeToByteArray(): About to Dispatch.call( (Dispatch) Dispatch.call(jacobObjWord, \"WordBasic\").getDispatch(),\"FileSaveAs\", myFilename);");
+						Dispatch.call( (Dispatch) Dispatch.call(jacobObjWord, "WordBasic").getDispatch(),"FileSaveAs", myFilename); 
+
+			System.out.println("MSWord_jsText: storeToByteArray: Now re-loading file content from "+myFilename+" into byte[] ret...");
+			System.out.println("MSWord_jsText: storeToByteArray: BufferedInputStream bis = new BufferedInputStream(new FileInputStream(myFile));");
+			BufferedInputStream bis = new BufferedInputStream(new FileInputStream(myFile));
+			byte[] ret = new byte[(int) myFile.length()];
+			System.out.println("MSWord_jsText: storeToByteArray: Reading begins. myFile.length == "+myFile.length());
+			int pos = 0, len = 0;
+			System.out.println("MSWord_jsText: storeToByteArray: about to read file via while (pos + len = bis.read(ret)) != ret.legnth) {}...");
+			while (pos + (len = bis.read(ret)) != ret.length) {
+				pos += len;
+			}
+			System.out.println("MSWord_jsText: storeToByteArray: Reading complete. Result: byte[] ret.length == "+ret.length);
+			
+			
+			System.out.println("MSWord_jsText: storeToByteArray: about to end, returning byte[] ret... (to Elexis.TextView.java for storage as BLOB in DBMS)");
+			return ret;
+		} catch (Exception ex) {
+			ExHandler.handle(ex);
+			System.out.println("MSWord_jsText: storeToByteArray: Exception caught. About to return null");
+			return null;
+		}
 	}
 	
 	
@@ -3157,15 +3283,17 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		ORIGINAL CODE FROM NOA/OPENOFFICE */
 
 		if (jacobObjWord != null) {
-			System.out.println("MSWord_jsText: dispose: About to panelDispatch.call(jacobObjWord, \"Quit\"); jacobObjWord = null; jacobDocuments = null;");
+			//202601021651js - This does not help the undesired behaviour when 2 Windows of Word 2013 are open: 
+			//System.out.println("MSWord_jsText: dispose: About to Dispatch.call(jacobObjWord, \"Close\"); jacobObjWord = null; jacobDocuments = null;");
+			//Dispatch.call(jacobObjWord, "Close");
+			System.out.println("MSWord_jsText: dispose: About to Dispatch.call(jacobObjWord, \"Quit\"); jacobObjWord = null; jacobDocuments = null;");
 			Dispatch.call(jacobObjWord, "Quit");
 			jacobObjWord = null;
 			//jacobSelection = null;
 	        jacobDocuments = null; 
 		}
 		else {System.out.println("MSWord_jsText: dispose: WARNING: jacobObjWord already WAS NULL.");}
-			
-		
+	
 		System.out.println("MSWord_jsText: dispose ends");
 	}
 	
@@ -3543,7 +3671,9 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		//It still flickers, because we have about 6 calls through findOrReplace() from Elexis.
 		//So... we evaluate the patterns supplied from Elexis to decide whether we shall set Word to invisible or not :-)
 		//This is the 1st pattern that Elexis sends, so we're at the beginning of the 1st pass through findOrReplace and switch Word back to invisible :-)
-		if (pattern.equals("\\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+\\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+\\]")) {
+		
+		if (pattern == null) System.out.println("MSWord_jsText: findOrReplace: ERROR: pattern IS NULL!)");
+		else if (pattern.equals("\\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+\\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+\\]")) {
 			//ToDo: Allenfalls wieder einschalten, wenn danach das MSWord Dokumentenwindow wieder nach vorne geholt werden kann: //20170201js commented out
 			System.out.println("MSWord_jsText: findOrReplace: FOLGENDER CODE COMMENTED OUT, DA WORD DABEI LEICHT NACH HINTEN RUTSCHT:");		
 			System.out.println("MSWord_jsText: findOrReplace: BITTE ERST DANN WIEDER EINFUEGEN, WENN WORD ANSCHLIESSEND NACH VORNE GEHOLT WERDEN KANN.");		
@@ -3552,7 +3682,8 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 			//jacobObjWord.setProperty("Visible", new Variant(false));	 //20170201js commented out
 		}
 
-		
+		//202601021827js: on-the-fly-conversion / on-the-fly-Konversion / on-the-fly-translation of OO RegExp into MS Word Platzhalter-Suche compatible search patterns
+		//202601021827js: Added this comment to make this section show up in searches for the same string that appears in warning messages after search-replace-exceptions.
 		if (debugSysPrnFindOrReplaceDetails) 
 			System.out.println("MSWord_jsText: findOrReplace: On-the-fly translation of OO RegExp into MS Word Platzhalter-Suche compatible search patterns...");
 
@@ -3562,42 +3693,56 @@ END OF TESTCODE FOR INSERTING TEXTFRAME SHAPES*/
 		
 		//Korrekt wäre hier: "\\[[*]{0,1}[-a-zA-ZäöüÄÖÜéàè_ ]@.[-a-zA-Z0-9äöüÄÖÜéàè_ ]@\\]"; oder "\\[[*]{0;1}[-a-zA-ZäöüÄÖÜéàè_ ]@.[-a-zA-Z0-9äöüÄÖÜéàè_ ]@\\]";
 		//je nach Ländereinstellung; aber beides lässt Word leider nicht zu. Ein {1} etc. geht übrigens, nur der Bereich geht nicht. Auch {;1} geht nicht.
-		//Ebenso wird ^ unten im 3. bis 6. Pattern durch ? ersetzt...
+		//Ebenso wird ^ unten im 3. bis 7. Pattern durch ? ersetzt.
+		//202601021848js: Das 7. Pattern ist neu hinzugekommen, ich kenne die genaue Bedeutung nicht und habe im Moment nicht die Zeit, das zu testen oder weiter zu verfolgen.
+		//TODO: 202601021848js: Patterns 7 und allenfalls 3 bis 6 Testen und allenfalls bessere Ersetzungen finden.
 		
+		pattern2 = pattern;
+		if (pattern == null) {
+			System.out.println("MSWord_jsText: findOrReplace: ERROR: pattern IS NULL!)");
+			System.out.println("MSWord_jsText: findOrReplace: ERROR: consequentially, pattern2 IS NULL, too!)");
+		}
+		else 
+		{
 		//OO:	\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+\]
 		//Word:	\[?[\-a-zA-ZäöüÄÖÜéàè_ ]@.[\-a-zA-Z0-9äöüÄÖÜéàè_ ]@\]		//[\*]{0,1} oder [\*]{0;1} wäre korrekt für [*]? wird aber nicht akzeptiert.
 		if (pattern.equals("\\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+\\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+\\]"))
-			pattern2 = "\\[?[\\-a-zA-ZäöüÄÖÜéàè_ ]@.[\\-a-zA-Z0-9äöüÄÖÜéàè_ ]@\\]";
+			pattern2     = "\\[?[\\-a-zA-ZäöüÄÖÜéàè_ ]@.[\\-a-zA-Z0-9äöüÄÖÜéàè_ ]@\\]";
 		else
 		//OO:	\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+(\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+)+\]
 		//Word:	\[?[\-a-zA-ZäöüÄÖÜéàè_ ]@(.[\-a-zA-Z0-9äöüÄÖÜéàè_ ]@)@\]	//[\*]{0,1} oder [\*]{0;1} wäre korrekt für [*]? wird aber nicht akzeptiert.
 		if (pattern.equals("\\[[*]?[-a-zA-ZäöüÄÖÜéàè_ ]+(\\.[-a-zA-Z0-9äöüÄÖÜéàè_ ]+)+\\]"))
-			pattern2 = "\\[?[\\-a-zA-ZäöüÄÖÜéàè_ ]@(.[\\-a-zA-Z0-9äöüÄÖÜéàè_ ]@)@\\]";	 
+			pattern2     = "\\[?[\\-a-zA-ZäöüÄÖÜéàè_ ]@(.[\\-a-zA-Z0-9äöüÄÖÜéàè_ ]@)@\\]";	 
 		else
 		//OO:	\[[*]?[a-zA-Z]+:mwn?:[^\[]+\]
 		//Word:	\[?[a-zA-Z]@:[mwn]@:[a-zA-Z/\-.,_0-9 ]@\]		//s.o. und: "^ nicht erlaubt" und ohnehin ging es erst nach vielen Versuchen.
 		if (pattern.equals("\\[[*]?[a-zA-Z]+:mwn?:[^\\[]+\\]"))
-			pattern2 = "\\[?[a-zA-Z]@:[mwn]@:[a-zA-Z/\\-.,_0-9 ]@\\]";
+			pattern2     = "\\[?[a-zA-Z]@:[mwn]@:[a-zA-Z/\\-.,_0-9 ]@\\]";
 		else
 		//OO:	\[[*]?[-_a-zA-Z0-9]+:[-a-zA-Z0-9]+:[-a-zA-Z0-9\.]+:[-a-zA-Z0-9\.]:?[^\]]*\]		//Dafür hab ich in meinem Brief kein Testsubstrat.
 		//Word:	\[?[\-_a-zA-Z0-9]@:[\a-zA-Z0-9]@:[\-a-zA-Z0-9.]@:[\-a-zA-Z0-9.]:?[?\]]*\]
 		if (pattern.equals("\\[[*]?[-_a-zA-Z0-9]+:[-a-zA-Z0-9]+:[-a-zA-Z0-9\\.]+:[-a-zA-Z0-9\\.]:?[^\\]]*\\]"))
-			pattern2 = "\\[?[\\-_a-zA-Z0-9]@:[\\a-zA-Z0-9]@:[\\-a-zA-Z0-9.]@:[\\-a-zA-Z0-9.]:?[?\\]]*\\]";	 
+			pattern2     = "\\[?[\\-_a-zA-Z0-9]@:[\\a-zA-Z0-9]@:[\\-a-zA-Z0-9.]@:[\\-a-zA-Z0-9.]:?[?\\]]*\\]";	 
 		else
 		//OO:	\[[*]?SQL[^:]*:[^\[]+\]					//Da findet auch das Original in meinem Test-Brief nichts, obwohl es eigentlich etwas finden sollte!
 		//Word:	\[SQL*:*\]								//Das ist nun grob vereinfacht, geht aber eher nicht anders. Freundlicherweise ist Word nicht greedy.
 		if (pattern.equals("\\[[*]?SQL[^:]*:[^\\[]+\\]"))	//Please note: My final SQL statement begins with: [SQL|\n|\n \n:select concat_ws(', ',concat(ifn...
-			pattern2 = "\\[SQL*:*\\]"; 						//Therefore, we must accept characters between [SQL and :
+			pattern2     = "\\[SQL*:*\\]"; 					//Therefore, we must accept characters between [SQL and :
 		else
 		//OO:	\[SCRIPT:[^\[]+\]
 		//Word:	\[SCRIPT:[?\[]@\]
 		if (pattern.equals("\\[SCRIPT:[^\\[]+\\]")) 	//Dafür hab ich in meinem Brief kein Testsubstrat.
-			pattern2 = "\\[SCRIPT:[?\\[]@\\]";	 
+			pattern2 =     "\\[SCRIPT:[?\\[]@\\]";	 
+		else
+		//OO:	\[[*]?[a-zA-Z\.]+:exists?:[-a-zA-Z0-9\.]:?[^\]]*\]
+		//Word:	\[[*]?[a-zA-Z\.]+:exists?:[-a-zA-Z0-9\.]:?[^\]]*\]
+		if (pattern.equals("\\[[*]?[a-zA-Z\\.]+:exists?:[-a-zA-Z0-9\\.]:?[^\\]]*\\]")) 	//202601021848js: This new pattern appears in Elexis 3.13 and causes new error messages.
+			pattern2 =     "\\[[*]?[a-zA-Z\\.]@:exists?:[-a-zA-Z0-9\\.]:?[?\\]]*\\]";	//202601021848JS: I replace the ^ (which causes the error) by ? and the + by @ as exemplified by previously defined replacements.  	 
 		else
 		pattern2 = pattern;
+		}
 		
 				
-
 		if (debugSysPrnFindOrReplaceDetails) 
 			System.out.println("MSWord_jsText: findOrReplace: About to start (rather complex) replacement code...");
 
@@ -4036,6 +4181,9 @@ End Sub
 											//(or when it should not even get invoked!),
 											//we do definitely NOT get an endless loop, NOR a misguided attempt to replace text. 	
 				
+				//202601021750js: Increase debugging output for now...
+				debugSysPrnFindOrReplaceDetails = true;
+				
 				if (debugSysPrnFindOrReplaceDetails) {
 					if (pattern == null)	System.out.println("MSWord_jsText: findOrReplace: ERROR: pattern IS NULL!");
 					else 					System.out.println("MSWord_jsText: findOrReplace: pattern="+pattern);
@@ -4060,7 +4208,8 @@ End Sub
 					"Das verwendete Suchpattern funktioniert möglicherweise NICHT mit MS Word.\n"+
 					"pattern \t(Von Elexis für OpenOffice):\t"+pattern+"\n"+
 					"pattern2\t(Von msword_js für MS Word):\t"+pattern2+"\n"+		
-					"Falls neue Suchpatterns hinzugefügt wurden, muss möglicherweise eine on-the-fly-Konversion in com.jsigle.msword_js.MSWord_jsText.java ergänzt werden.");
+					"Falls diese Fehlermeldung zukuenftig auftritt, wurden wahrscheinlich neue Suchpatterns in Elexis hinzugefuegt.\n"+
+					"Dann muss wahrscheinlich eine weitere on-the-fly-Konversion von OpenOffice-kompatiblem pattern nach MS-Word-kompatiblem pattern2 in com.jsigle.msword_js.MSWord_jsText.java ab Zeile 3685 ff. ergänzt werden.");
 					//ToDo: Add precautions for pattern==null or pattern2==null...
 					SWTHelper.showError(
 							"MSWord_jsText: findOrReplace (Haupttext):", 
@@ -4069,7 +4218,8 @@ End Sub
 							"Das verwendete Suchpattern funktioniert möglicherweise NICHT mit MS Word.\n"+
 							"pattern \t(Von Elexis für OpenOffice):    \t"+pattern+"\n"+	//spaces needed for tab alignment in proportional font
 							"pattern2\t(Von msword_js für MS Word):\t"+pattern2+"\n"+		
-							"Falls neue Suchpatterns hinzugefügt wurden, muss möglicherweise eine on-the-fly-Konversion in com.jsigle.msword_js.MSWord_jsText.java ergänzt werden.");
+							"Falls diese Fehlermeldung zukuenftig auftritt, wurden wahrscheinlich neue Suchpatterns in Elexis hinzugefuegt.\n"+
+							"Dann muss wahrscheinlich eine weitere on-the-fly-Konversion von OpenOffice-kompatiblem pattern nach MS-Word-kompatiblem pattern2 in com.jsigle.msword_js.MSWord_jsText.java ab Zeile 3685 ff. ergänzt werden.");
 				}
 				
 			
@@ -4086,7 +4236,8 @@ End Sub
 						//ToDo: This is an adhoc workaround to protect Tarmedrechnung_xx templates so that their header lines are NOT made appear.
 						//ToDo:   We should rather find out how Word can completely do away with an empty header line again,
 						//ToDo:   after that has been displayed by accessing ...Section.Header.Range (below in the SectionHeaders portion of findOrReplace).
-						if (pattern.equals("\\[Titel\\]")) { ProbablyUsingTarmed_xxTemplateSoDoNOTAccessHeaderRangeToAvoidGenerationOfEmptyHeaderLines = true; }
+        				if (pattern == null)	System.out.println("MSWord_jsText: findOrReplace: WARNING: pattern IS NULL!");
+        				else if (pattern.equals("\\[Titel\\]")) { ProbablyUsingTarmed_xxTemplateSoDoNOTAccessHeaderRangeToAvoidGenerationOfEmptyHeaderLines = true; }
 						
 						
 						
@@ -5801,7 +5952,8 @@ System.out.println("MSWord_jsText: findOrReplace (SectionHeaders): *** ENDE DES 
 		//It still flickers, because we have about 6 calls through findOrReplace() from Elexis.
 		//So... we evaluate the patterns supplied from Elexis to decide whether we shall set Word to invisible or not :-)
 		//This is the 6th pattern that Elexis sends, so we're after the 6th pass through findOrReplace and switch Word back to visible :-)
-		if (pattern.equals("\\[SCRIPT:[^\\[]+\\]")) {
+		if (pattern == null)	System.out.println("MSWord_jsText: findOrReplace: WARNING: pattern IS NULL!");
+		else if (pattern.equals("\\[SCRIPT:[^\\[]+\\]")) {
 			//ToDo: Allenfalls wieder einschalten, wenn danach das MSWord Dokumentenwindow wieder nach vorne geholt werden kann: //20170201js commented out
 			System.out.println("MSWord_jsText: findOrReplace: FOLGENDER CODE COMMENTED OUT, DA WORD DABEI LEICHT HINTER ELEXIS RUTSCHT:");		
 			System.out.println("MSWord_jsText: findOrReplace: BITTE ERST DANN WIEDER EINFUEGEN, WENN WORD ANSCHLmusterIESSEND NACH VORNE GEHOLT WERDEN KANN.");		
@@ -6377,7 +6529,8 @@ System.out.println("MSWord_jsText: findOrReplace (SectionHeaders): *** ENDE DES 
 						else 				System.out.println("MSWord_jsText: insertText: orig="+orig);
 
 						//Replace the found text portion by "", hopefully maintaining the cursor position in the document
-				    	System.out.println("MSWord_jsText: insertText: text == "+text.toString());
+						if (text == null)	System.out.println("MSWord_jsText: insertText: ERROR: text IS NULL!");
+						else				System.out.println("MSWord_jsText: insertText: text == "+text.toString());
 						
 						//Text replacements adopted from insertAt() (continued) below,
 						//which are needed *there* to make MS Word understand incoming text from Elexis correctly
@@ -7335,8 +7488,26 @@ System.out.println("MSWord_jsText: findOrReplace (SectionHeaders): *** ENDE DES 
 				System.out.println("");
 				
 				//System.out.println("MSWord_jsText: clean: About to Dispatch.call(jacobDocument, \"Close\", new Variant(false)); jacobDocument = null;");
-			    //Dispatch.call(jacobDocument, "Close", new Variant(false));
+			    //Dispatch.call(jacobDocument, "Close", new Variant(false));	//202601021716js: This does NOT suffice, it leaves open an empty MS Word Window.
+			    //Dispatch.call(jacobDocument, "Quit", new Variant(false));		//202601021716js: This does NOT suffice, After close, it STILL leaves open an empty MS Word Window.
+				//																				  (maybe because close also might set jacobDocument = null; so Quit won't find it any more.)
+				//																				  On its own, it does neither close the old doc nor the window, and the next cannot be opened.
 			    //jacobDocument = null;
+				
+				//202601021707js leaving it as it was.
+				//In Word 2013 / Office 2013, I observed the following undesired behaviour:
+				//IF a new MS Word document is created from the MS Word window of a word document opened from Elexis, this will appear in a new window. 
+				//As long as this new window is in the foreground: Elexis cannot open a different document; the old one will remain quasi-un-reachable in its own MS Word window in the background.
+				//When the new window is moved to the background and the original Elexis/Word document to the foreground, THEN Elexis CAN close it and open another one - 
+				//BUT it will also close the OTHER "new" MS Word document, which was previously opened from out of the Elexis/Word Window.
+				//This is clearly asking for trouble and should be changed to some more user-friendly behaviour.
+				
+				//Mercily, STILL, this will not happen with MS Word windows that were open BEFORE Elexis opened an Elexis-document in its own MS Word Window.
+				//Tested with one, or with multiple other MS Word windows, containing saved or unsaved documents.
+				
+				//We must also test if this behaviour was already present in Elexis 3.7 with MS Word 2003, or in Elexis 3.7 with MS Word 2013 etc.,
+				//and especially, if it happens in Elexis 3.13 with MS Word 2003. 
+				
 				close();	//this includes: jacobDocument = null;
 				quit();		//this includes: jacobObjWord = null; jacobDocuments = null;	//Otherwise, an open empty MS Word Window would remain, e.g. each time another Brief would be dblclicked in Briefauswahl. 
 
@@ -7346,11 +7517,26 @@ System.out.println("MSWord_jsText: findOrReplace (SectionHeaders): *** ENDE DES 
 			else { System.out.println("MSWord_jsText: clean: WARNING: jacobDocument IS NULL!"); };
 
 			
-			//201611131641js Umstellung von *.odt auf *.doc für MS-Word
+			//201611131641js Umstellung von *.odt auf *.doc fuer MS-Word
+			
+			//MSWord_js version with simple, partially-randomly named temp files
 			System.out.println("MSWord_jsText: clean: about to myFile = File.createTempFile(\"MSWord_jsText\", \".doc\");");
 			myFile = File.createTempFile("MSWord_jsText", ".doc");
+			
+			//older version from NoaText / NoaText_js
 			//System.out.println("MSWord_jsText: clean: about to myFile = File.createTempFile(\"noa\", \".odt\");");
 			//myFile = File.createTempFile("noa", ".odt");
+
+			//TODO: 20210329js: Umstellung from stock randomp-portion-temporary to configurable informative filename:
+			//Das lasse ich jetzt weg, es ist doch zu komplex, weil eben NICHT jede TextDatei Bezug zu einem Patienten hat.
+			
+			//If NO filename is configured, this will automatically fall back to using File.createTempFile(...) as previously here.
+			//System.out.println("MSWord_jsText: clean: about to myFile = File.createTempFile(\"MSWord_jsText\", \".doc\");");
+			
+			//System.out.println("MSWord_jsText: clean: about to myFile = makeTempFile(\"*.doc\") providing a configurable filename, or,");
+			//System.out.println("MSWord_jsText: if nothing configured, calls myFile = File.createTempFile(\"MSWord_jsText\", \".doc\");");
+			//myFile = makeTempFile(".doc");
+
 
 			System.out.println("MSWord_jsText: clean: TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO");
 			System.out.println("MSWord_jsText: clean: TODO myFile.deleteOnExit(); commented out. Seems safer to do so.");
@@ -7601,4 +7787,125 @@ COMMENTED OUT */
 		// TODO Auto-generated method stub
 		
 	}
+	
+
+	
+	//Copied over from omnivore_js (whose new functionality has been assimilated to mainstream omnivore) DocHandle.java
+
+	//Here: Create a "talking" = informative temporary filename, put together
+	//from the building blocks specified on the Omnivore configuration page.
+
+	//CAVE: This method is NOT identical with the one in Omnivore DocHandle.
+	//First, it uses msword_js Preferences, NOT Omnivore Preferences.
+	//Second, if no special rules are configured,
+	//it falls back to calling File.createTempFile like this:
+	//temp = File.createTempFile("MSWord_jsText", ".doc"); //$NON-NLS-1$ //$NON-NLS-2$
+	//and not:
+	//temp = File.createTempFile("omni_", "_vore." + ext); //$NON-NLS-1$ //$NON-NLS-2$
+	//Third, the log.debug entries are naturally different,
+	//Fourth, the error message in case of problems is different,
+	//Fifth, not every TextDocument has a relation to a patient - whereas every OmnivoreDocument has.
+	//So, strictly speaking, it is misleading to use PatientID data for the temp filenames of all text dokuments.
+	//We need a way to decide when to leave the patient centered stuff away,
+	//and this information must be obtained from outside
+	//(or at least partially, by recognition of the caller from herein).
+	
+	//TODO: CHECK HOW THIS OVERLAPS WIH NIKLAUS MOVING createNiceFileName(DocHandle dh) to Utils Java!
+	
+	public File makeTempFile(String ext){
+			try {
+				System.out.println("makeTempFile() is about to make a temporary file with configurable filename...");
+				
+				if (ext == null) 	System.out.println("makeTempFile(): WARNING: provided ext IS NULL.");
+				else 				System.out.println("makeTempFile(): provided ext is: "+ext);
+
+				System.out.println("makeTempFile(): this.getClass() is: "+this.getClass().toString());
+				System.out.println("makeTempFile(): super.getClass() is: "+super.getClass().toString());
+				
+				//20130411js: Make the temporary filename configurable
+				StringBuffer configured_temp_filename=new StringBuffer();
+				
+				//TODO: Hier ist problematisch, dass NICHT jedes MSWord_js Dokument sich tatsächlich auf einen Patienten etc. bezieht -
+				//und auch nicht notwendigerweise auf den aktuell gerade angezeigten Patienten.
+				//D.H. dieser Methode hier müsste eigentlich wissen, we das MSWord_jsText gerade aufruft,
+				//um ein Dokument zu öffnen - ODER ob das zu einem Patienten gehört, und zu welchem Patienten.
+				//Sonst gibt es zwangsläufig Dokumente mit Temp-Dateinamen, die auf einen Patienten hinweisen,
+				//obwohl sie überhaupt nichts mit dem zu tun haben.
+				//Und diese Information hat eigentlich nur die Stelle, welche TextView aufruft!
+				//Insofern müsste 
+				
+				//20210329js: MSWord_jsText.java has used Gerrys older logger instead of Niklaus' preferred newer one.
+				//I refrain from updating the following statements for now, as the generation of temp files should work rather reliably by now.
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				System.out.println("Super.getClass() = " + super.getClass().toString());
+				configured_temp_filename.append(Utils.getTempFilenameElement("constant1",""));
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//configured_temp_filename.append(Utils.getTempFilenameElement("PID",getPatient().getKuerzel()));	//getPatient() liefert in etwa: ch.elexis.com@1234567; getPatient().getId() eine DB-ID; getPatient().getKuerzel() die Patientennummer.
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//configured_temp_filename.append(Utils.getTempFilenameElement("fn",getPatient().getName()));
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//configured_temp_filename.append(Utils.getTempFilenameElement("gn",getPatient().getVorname()));
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//configured_temp_filename.append(Utils.getTempFilenameElement("dob",getPatient().getGeburtsdatum()));
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+
+				//configured_temp_filename.append(Utils.getTempFilenameElement("dt",getTitle()));				//not more than 80 characters, laut javadoc
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//configured_temp_filename.append(Utils.getTempFilenameElement("dk",getKeywords()));
+				//log.debug("msword_js.Text.java.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				//Da könnten auch noch Felder wie die Document Create Time etc. rein - siehe auch unten, die Methoden getPatient() etc.
+				
+				//configured_temp_filename.append(Utils.getTempFilenameElement("dguid",getGUID()));
+				//log.debug("DocHandle.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				
+				//N.B.: We may NOT REALLY assume for sure that another filename, derived from a createTempFile() result, where the random portion would be moved forward in the name, may also be guaranteed unique!
+				//So *if* we should use createTempFile() to obtain such a filename, we should put constant2 away from configured_temp_filename and put it in the portion provided with "ext", if a unique_temp_id was requested.
+				//And, we should probably not cut down the size of that portion, so it would be best to do nothing for that but offer a checkbox.
+				
+				//Es muss aber auch gar nicht mal unique sein - wenn die Datei schon existiert UND von einem anderen Prozess, z.B. Word, mit r/w geöffnet ist, erscheint ein sauberer Dialog mit einer Fehlermeldung. Wenn sie nicht benutzt wird, kann sie überschrieben werden.
+				
+				//Der Fall, dass hier auf einem Rechner / von einem User bei dem aus Daten erzeugten Filenamen zwei unterschiedliche Inhalte mit gleichem Namen im gleichen Tempdir gleichzeitig nur r/o geöffnet werden und einander in die Quere kommen, dürfte unwahrscheinlich sein.
+				//Wie wohl... vielleicht doch nicht. Wenn da jemand beim selben Patienten den Titel 2x einstellt nach: "Bericht Dr. Müller", und das dann den Filenamen liefert, ist wirklich alles gleich.
+				//So we should ... possibly really add some random portion; or use any other property of the file in that filename (recommendation: e.g. like in AnyQuest Server :-)  )
+				
+				//Ganz notfalls naoch ein Feld mit der Uhrzeit machen... oder die Temp-ID je nach eingestellten num_digits aus den clockticks speisen. Und das File mit try createn, notfalls wiederholen mit anderem clocktick - dann ist das so gut wie ein createTempFile().
+				//For now, I compute my own random portion - by creating a random BigInteger with a sufficient number of bits to represent  PreferencePage.nOmnivore_jsPREF_cotf_element_digits_max decimal digits.
+				//And I accept the low chance of getting an existing random part, i.e. I don't check the file is already there.
+				
+				SecureRandom random = new SecureRandom();
+				int  needed_bits = (int) Math.round(Math.ceil(Math.log(Preferences.nPreferences_cotf_element_digits_max)/Math.log(2)));
+				configured_temp_filename.append(Utils.getTempFilenameElement("random",new BigInteger(needed_bits , random).toString() ));
+				//log.debug("DocHandle.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				
+				configured_temp_filename.append(Utils.getTempFilenameElement("constant2",""));
+				//log.debug("DocHandle.makeTempFileString: configured_temp_filename = <{}>", configured_temp_filename.toString());
+				
+				File temp;
+				if (configured_temp_filename.length()>0) {
+					//The following file will have a unique variable part after the configured_temp_filename_and before the .ext,
+					//but will be located in the temporary directory.
+					File uniquetemp = File.createTempFile(configured_temp_filename.toString()+"_","."+ext); //$NON-NLS-1$ //$NON-NLS-2$
+					String temp_pathname=uniquetemp.getParent();
+					uniquetemp.delete(); 
+					
+					//remove the _unique variable part from the temporary filename and create a new file in the same directory as the previously automatically created unique temp file
+					//log.debug("DocHandle.makeTempFileString: temp_pathname = <{}>", temp_pathname);
+					//log.debug("DocHandle.makeTempFileString: configured_temp_filename.ext = <{}.{}>", configured_temp_filename , ext);
+					temp = new File(temp_pathname,configured_temp_filename+"."+ext);
+					temp.createNewFile();
+				}
+				else {
+					//if special rules for the filename are not configured, then generate it simply as before Omnivore_js Version 1.4.4
+					temp = File.createTempFile("MSWord_jsText", ".doc"); //$NON-NLS-1$ //$NON-NLS-2$
+					//temp = File.createTempFile("omni_", "_vore." + ext); //$NON-NLS-1$ //$NON-NLS-2$
+				}
+				
+			return temp;	
+			} catch (Exception ex) {
+				ExHandler.handle(ex);
+				SWTHelper.showError(Messages.MSWord_js_couldNotMakeTempFile, ex.getMessage());
+				return null;
+			}
+		}
+
 }

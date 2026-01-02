@@ -1,6 +1,8 @@
 /****************************************************************************
  *                                                                          *
- * NOA (Nice Office Access)                                     						*
+ * Adopted from NOA (Nice Office Access) as used in NOAText/_js/_jsl        *
+ * to the JACOB based MSWord_js during completion of the port               *
+ * pending removal of NOA remnants by jsigle - 20xx..2021                   *
  * ------------------------------------------------------------------------ *
  *                                                                          *
  * The Contents of this file are made available subject to                  *
@@ -41,7 +43,7 @@ import org.eclipse.osgi.util.NLS;
 /**
  * Native language binding.
  * 
- * @author Andreas Bröker
+ * @author Andreas Brï¿½ker
  * @version $Revision: 9195 $
  */
 public class Messages extends NLS {
