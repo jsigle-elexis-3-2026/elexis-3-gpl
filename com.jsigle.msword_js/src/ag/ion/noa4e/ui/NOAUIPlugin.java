@@ -266,8 +266,11 @@ public class NOAUIPlugin extends AbstractUIPlugin {
     	    //Unsuitable original line, removed:
     	    //String officeHome = getDefault().getPreferenceStore().getString(PREFERENCE_OFFICE_HOME);
     	    //Newly inserted lines:
+    	    
     	    IPreferenceStore preferenceStore = new SettingsPreferenceStore(CoreHub.localCfg);
-    	    String officeHome = preferenceStore.getString(Preferences.P_OOBASEDIR);
+    	    //TODO: 20260102js: Remove references to P_OOBASEDIR for now, they are not needed in msword_js and hinder the mvn build.
+    	    //String officeHome = preferenceStore.getString(Preferences.P_OOBASEDIR);
+        	System.out.println("NOAUIPlugin: TODO: 20260102js: ad-hoc removed reference to P_OOBASEDIR otherwise hindering mvn build.");    	    String officeHome = "";
     	  
     	System.out.println("NOAUIPlugin: startLocalOfficeApplication(): trying to get preventTermination setting...");
 
@@ -352,7 +355,9 @@ public class NOAUIPlugin extends AbstractUIPlugin {
     //String officeHome = getDefault().getPreferenceStore().getString(PREFERENCE_OFFICE_HOME);
     //Newly inserted lines:
     IPreferenceStore preferenceStore = new SettingsPreferenceStore(CoreHub.localCfg);
-    String officeHome = preferenceStore.getString(Preferences.P_OOBASEDIR);
+    //TODO: 20260102js: Remove references to P_OOBASEDIR for now, they are not needed in msword_js and hinder the mvn build.
+    //String officeHome = preferenceStore.getString(Preferences.P_OOBASEDIR);
+    String officeHome = "";
    
     System.out.println("NOAUIPlugin: internalStartApplication(): got officeHome.");
     if (officeHome==null)	System.out.println("NOAUIPlugin: internalStartApplication(): WARNING: officeHome==null");
@@ -430,7 +435,10 @@ public class NOAUIPlugin extends AbstractUIPlugin {
     	//getDefault().getPluginPreferences().setValue(PREFERENCE_OFFICE_HOME,
     	//          configuration.get(IOfficeApplication.APPLICATION_HOME_KEY).toString());
     	//Newly inserted line:
-        preferenceStore.setValue(Preferences.P_OOBASEDIR, configuration.get(IOfficeApplication.APPLICATION_HOME_KEY).toString());
+
+	    //TODO: 20260102js: Remove references to P_OOBASEDIR for now, they are not needed in msword_js and hinder the mvn build.
+	    //preferenceStore.setValue(Preferences.P_OOBASEDIR, configuration.get(IOfficeApplication.APPLICATION_HOME_KEY).toString());
+    	System.out.println("NOAUIPlugin: TODO: 20260102js: ad-hoc removed reference to P_OOBASEDIR otherwise hindering mvn build.");
     }
       
     return status;

@@ -253,8 +253,11 @@ public class LocalOfficeApplicationPreferencesPage extends PreferencePage implem
     //preferenceStore.setValue(NOAUIPlugin.PREFERENCE_PREVENT_TERMINATION,
     //    buttonPreventTermination.getSelection());
 
-    String oldPath = preferenceStore.getString(Preferences.P_OOBASEDIR);
-    preferenceStore.setValue(Preferences.P_OOBASEDIR, textHome.getText());
+    //TODO: 20260102js Removed References to P_OOBASEDIR for now. It is not needed for msword_js and hinders the mvn build.
+    //String oldPath = preferenceStore.getString(Preferences.P_OOBASEDIR);
+    //preferenceStore.setValue(Preferences.P_OOBASEDIR, textHome.getText());
+	System.out.println("LOAPP: TODO: 20260102js: ad-hoc removed reference to P_OOBASEDIR otherwise hindering mvn build.");
+    String oldPath = "";
 
     //String oldPath = preferenceStore.getString(NOAUIPlugin.PREFERENCE_OFFICE_HOME);
     //preferenceStore.setValue(NOAUIPlugin.PREFERENCE_OFFICE_HOME, textHome.getText());
@@ -335,7 +338,12 @@ public class LocalOfficeApplicationPreferencesPage extends PreferencePage implem
 	System.out.println("LOAPP: instead of using = NOAUIPlugin.getDefault().getPreferenceStore()");
 	
 	IPreferenceStore preferenceStore=new SettingsPreferenceStore(CoreHub.localCfg);
-	String officeHomePath=preferenceStore.getString(Preferences.P_OOBASEDIR);
+
+    //TODO: 20260102js Removed References to P_OOBASEDIR for now. It is not needed for msword_js and hinders the mvn build.
+	//String officeHomePath=preferenceStore.getString(Preferences.P_OOBASEDIR);
+	System.out.println("LOAPP: TODO: 20260102js: ad-hoc removed reference to P_OOBASEDIR otherwise hindering mvn build.");
+	String officeHomePath="";
+	
 	boolean preventTermination=preferenceStore.getBoolean(PREFS_PREVENT_TERMINATION);
 	  
 	//IPreferenceStore preferenceStore = NOAUIPlugin.getDefault().getPreferenceStore();
